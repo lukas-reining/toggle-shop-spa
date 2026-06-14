@@ -1,0 +1,5 @@
+generate:
+  react:
+    output: "./apps/web/src/generated/react"
+  nodejs:
+    output: "./apps/api/src/generated/nodejs"

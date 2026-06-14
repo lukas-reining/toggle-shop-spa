@@ -1,0 +1,15 @@
+# Default configuration for the codecentric single-page-application-server.
+# Mounted/baked at /config/default.yaml. A runtime /config/config.yaml can
+# override these values per environment.
+#
+# The values under `spa_config` are exposed to the SPA at runtime via
+# `window.spaConfig` (the server regenerates /spa_config.js on startup).
+# Endpoints listed here are also auto-whitelisted in the CSP connect-src
+# directive.
+default:
+  spa_config:
+    endpoints:
+      # Nest.js API base URL (including the /api prefix).
+      api: "http://localhost:3001/api"
+      # Standalone flagd OFREP base URL.
+      ofrep: "http://localhost:8016"
