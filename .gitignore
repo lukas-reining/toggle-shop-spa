@@ -27,3 +27,7 @@ ctrf/
 # misc
 .DS_Store
 *.tsbuildinfo
+
+# IDE
+.idea/
+.vscode/
