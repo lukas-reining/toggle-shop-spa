@@ -1,0 +1,48 @@
+services:
+  flagd:
+    image: ghcr.io/open-feature/flagd:latest
+    command:
+      - start
+      - --uri
+      - file:/etc/flagd/flags.json
+      - --cors-origin
+      - "http://localhost:3000"
+    volumes:
+      - ./flags.json:/etc/flagd/flags.json:ro
+    ports:
+      # 8013: flag evaluation / gRPC gateway
+      # 8015: gRPC sync (used by the API in-process provider)
+      # 8016: OFREP (used by the web SPA, called from the browser)
+      - "8013:8013"
+      - "8015:8015"
+      - "8016:8016"
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      PORT: "3001"
+      CORS_ORIGIN: "http://localhost:3000"
+      # Server-side: reach flagd over the compose network via the gRPC sync port.
+      FLAGD_HOST: "flagd"
+      FLAGD_PORT: "8015"
+      # OTLP exporters are optional; leave empty to disable.
+      OTLP_TRACE_URL: ""
+      OTLP_METRICS_URL: ""
+      OTLP_LOGS_URL: ""
+      OTLP_AUTHORIZATION: ""
+    depends_on:
+      - flagd
+    ports:
+      - "3001:3001"
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    depends_on:
+      - api
+    ports:
+      # codecentric SPA server listens on 80 inside the container.
+      - "3000:80"

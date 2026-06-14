@@ -48,6 +48,26 @@ The SPA reads its backend endpoints at runtime from `window.spaConfig`
 environment when deployed with the
 [codecentric single-page-application-server](https://github.com/codecentric/single-page-application-server).
 
+## Docker Compose
+
+The whole stack (flagd, API, and the SPA served by the codecentric
+single-page-application-server) can be run with Docker:
+
+```sh
+docker compose up --build
+```
+
+- Web: http://localhost:3000
+- API: http://localhost:3001
+- flagd OFREP: http://localhost:8016
+
+The web image is built `FROM codecentric/single-page-application-server`. At
+container startup it generates `window.spaConfig` from
+[`apps/web/config/default.yaml`](./apps/web/config/default.yaml) and
+auto-whitelists those endpoints in the `connect-src` CSP directive. The browser
+talks to the API and flagd over `localhost`, while the API reaches flagd over
+the compose network (`FLAGD_HOST=flagd`).
+
 ## Feature flags
 
 | Feature Flag        | Type    | Default Variant | Variants |
