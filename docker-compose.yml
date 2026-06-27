@@ -27,15 +27,46 @@ services:
       # Server-side: reach flagd over the compose network via the gRPC sync port.
       FLAGD_HOST: "flagd"
       FLAGD_PORT: "8015"
-      # OTLP exporters are optional; leave empty to disable.
-      OTLP_TRACE_URL: ""
-      OTLP_METRICS_URL: ""
-      OTLP_LOGS_URL: ""
+      # Export traces and metrics to the Grafana LGTM stack (OTLP/HTTP protobuf
+      # on port 4318). Reachable via the compose network.
+      OTLP_TRACE_URL: "http://lgtm:4318/v1/traces"
+      OTLP_METRICS_URL: "http://lgtm:4318/v1/metrics"
       OTLP_AUTHORIZATION: ""
+      # Export metrics every 5s so flag flips move the dashboard within seconds
+      # (the OTel default is 60s, far too slow for a live demo).
+      OTEL_METRIC_EXPORT_INTERVAL_MS: "5000"
     depends_on:
       - flagd
+      - lgtm
     ports:
       - "3001:3001"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://localhost:3001/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  # Grafana LGTM all-in-one: Tempo (traces), Prometheus/Mimir (metrics) and
+  # Grafana, fed by a single OTLP endpoint.
+  lgtm:
+    image: grafana/otel-lgtm:latest
+    environment:
+      # Keep the metric/trace/log retention generous for the live demo.
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    volumes:
+      # Provision the ToggleShop demo dashboard (technical + business rows).
+      - ./observability/grafana/provisioning/dashboards/toggle-shop.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/toggle-shop.yaml:ro
+      - ./observability/grafana/dashboards/toggle-shop.json:/otel-lgtm/dashboards/toggle-shop.json:ro
+    ports:
+      - "3002:3000" # Grafana UI -> http://localhost:3002
+      - "4318:4318" # OTLP/HTTP (optional: browser-side export)
+      - "4317:4317" # OTLP/gRPC
 
   web:
     build:
@@ -46,3 +77,29 @@ services:
     ports:
       # codecentric SPA server listens on 80 inside the container.
       - "3000:80"
+
+  # Flag-aware synthetic shoppers (k6). They browse products and place orders,
+  # and convert at a higher rate when offer-free-shipping is ON, so flipping
+  # flags moves both the technical (latency/errors) and business
+  # (orders/revenue) lines on the Grafana dashboard. k6 only drives load; the
+  # dashboard reads the API's own OTel metrics. Disabled by default; start with:
+  #   docker compose --profile load up load-generator
+  load-generator:
+    image: grafana/k6:latest
+    volumes:
+      - ./tools/load-generator:/scripts:ro
+    command: ["run", "/scripts/load-test.js"]
+    environment:
+      API_BASE_URL: "http://api:3001/api"
+      OFREP_BASE_URL: "http://flagd:8016"
+      VUS: "6"
+      # Long-running for a live demo; restarts keep traffic flowing if it ends.
+      DURATION: "8h"
+    depends_on:
+      api:
+        condition: service_healthy
+      flagd:
+        condition: service_started
+    restart: unless-stopped
+    profiles:
+      - load

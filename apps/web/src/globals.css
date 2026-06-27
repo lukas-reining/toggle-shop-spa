@@ -1,6 +1,11 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+/* Map the `background`/`foreground` utilities to runtime CSS variables so
+   `bg-background` / `text-foreground` follow the light/dark scheme below. */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+}
 
 :root {
   --background: #ffffff;
@@ -17,14 +22,21 @@
 html {
   scroll-behavior: smooth;
 }
+
 body {
   color: var(--foreground);
   background: var(--background);
   font-family: "Inter", Arial, Helvetica, sans-serif;
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
+@layer base {
+  input,
+  textarea,
+  select {
+    color: var(--color-gray-600);
   }
+}
+
+@utility text-balance {
+  text-wrap: balance;
 }

@@ -1,0 +1,11 @@
+apiVersion: 1
+
+# Provisions the ToggleShop demo dashboard alongside the otel-lgtm built-ins.
+# The dashboard JSON is mounted into the container at the path below.
+providers:
+  - name: "ToggleShop"
+    type: file
+    allowUiUpdates: true
+    options:
+      path: /otel-lgtm/dashboards/toggle-shop.json
+      foldersFromFilesStructure: false

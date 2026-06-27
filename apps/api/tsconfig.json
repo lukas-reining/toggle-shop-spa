@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "module": "commonjs",
+    "ignoreDeprecations": "6.0",
     "declaration": false,
     "removeComments": true,
     "emitDecoratorMetadata": true,
@@ -9,8 +10,9 @@
     "target": "ES2021",
     "sourceMap": true,
     "outDir": "./dist",
+    "rootDir": "./src",
     "baseUrl": "./",
-    "incremental": true,
+    "incremental": false,
     "skipLibCheck": true,
     "strict": true,
     "strictNullChecks": true,

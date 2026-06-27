@@ -196,7 +196,7 @@
             "showPoints": "never",
             "spanNulls": true,
             "stacking": {
-              "mode": "normal"
+              "mode": "none"
             }
           }
         },

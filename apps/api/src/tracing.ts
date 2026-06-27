@@ -6,21 +6,13 @@
  * OpenTelemetry Node SDK instead of `@vercel/otel`.
  */
 import { NodeSDK } from "@opentelemetry/sdk-node";
+import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-proto";
 import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-proto";
-import { OTLPLogExporter } from "@opentelemetry/exporter-logs-otlp-proto";
 import {
   type MetricReader,
   PeriodicExportingMetricReader,
 } from "@opentelemetry/sdk-metrics";
-import {
-  type LogRecordProcessor,
-  LoggerProvider,
-  SimpleLogRecordProcessor,
-} from "@opentelemetry/sdk-logs";
-import { events } from "@opentelemetry/api-events";
-import { logs } from "@opentelemetry/api-logs";
-import { EventLoggerProvider } from "@opentelemetry/sdk-events";
 
 const SERVICE_NAME = "toggle-shop-api";
 
@@ -39,7 +31,15 @@ if (process.env.OTLP_TRACE_URL) {
 
 let metricReader: MetricReader | undefined;
 if (process.env.OTLP_METRICS_URL) {
+  // Default the OTel metric reader to a 60s export interval, which is far too
+  // slow for a live demo: after flipping a flag you want the dashboard lines to
+  // move within seconds. Export every few seconds instead (override with
+  // OTEL_METRIC_EXPORT_INTERVAL_MS).
+  const exportIntervalMillis = process.env.OTEL_METRIC_EXPORT_INTERVAL_MS
+    ? Number(process.env.OTEL_METRIC_EXPORT_INTERVAL_MS)
+    : 5000;
   metricReader = new PeriodicExportingMetricReader({
+    exportIntervalMillis,
     exporter: new OTLPMetricExporter({
       url: process.env.OTLP_METRICS_URL,
       headers,
@@ -47,31 +47,19 @@ if (process.env.OTLP_METRICS_URL) {
   });
 }
 
-let logRecordProcessor: LogRecordProcessor | undefined;
-if (process.env.OTLP_LOGS_URL) {
-  logRecordProcessor = new SimpleLogRecordProcessor(
-    new OTLPLogExporter({
-      url: process.env.OTLP_LOGS_URL,
-      headers,
-    })
-  );
-}
-
 export function registerOTel() {
   const sdk = new NodeSDK({
     serviceName: SERVICE_NAME,
     ...(traceExporter ? { traceExporter } : {}),
     ...(metricReader ? { metricReader } : {}),
+    // HTTP / Express / NestJS auto-instrumentation gives us request spans
+    // (which parent the manual DB spans) and HTTP server duration metrics.
+    // `fs` instrumentation is disabled to keep the demo traces readable.
+    instrumentations: [
+      getNodeAutoInstrumentations({
+        "@opentelemetry/instrumentation-fs": { enabled: false },
+      }),
+    ],
   });
   sdk.start();
-
-  // Set up a logger provider so the OTel event logger works.
-  const loggerProvider = new LoggerProvider();
-  if (logRecordProcessor) {
-    loggerProvider.addLogRecordProcessor(logRecordProcessor);
-  }
-  logs.setGlobalLoggerProvider(loggerProvider);
-
-  console.log("setting global event logger provider");
-  events.setGlobalEventLoggerProvider(new EventLoggerProvider(loggerProvider));
 }

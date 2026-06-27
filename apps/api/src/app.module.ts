@@ -2,15 +2,12 @@ import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { OpenFeatureModule } from "@openfeature/nestjs-sdk";
 import type { EvaluationContext } from "@openfeature/server-sdk";
-import { events } from "@opentelemetry/api-events";
-import { TelemetryHook, TARGETING_KEY_HEADER } from "@toggle-shop/shared";
+import { MetricsHook, SpanEventHook } from "@openfeature/open-telemetry-hooks";
+import { TARGETING_KEY_HEADER } from "@toggle-shop/shared";
 import { FlagdEventProvider } from "./open-feature/flagd-event-provider";
 import { HealthModule } from "./health/health.module";
 import { ProductsModule } from "./products/products.module";
 import { OrdersModule } from "./orders/orders.module";
-import { EventsModule } from "./events/events.module";
-
-const eventLogger = events.getEventLogger("feature_flag");
 
 @Module({
   imports: [
@@ -22,12 +19,13 @@ const eventLogger = events.getEventLogger("feature_flag");
         port: process.env.FLAGD_PORT ? Number(process.env.FLAGD_PORT) : 8015,
       }),
       hooks: [
-        new TelemetryHook((event) => {
-          eventLogger.emit({
-            name: "feature_flag.evaluation",
-            attributes: event,
-          });
-        }),
+        // 1. Traces: every evaluation becomes a `feature_flag.evaluation` span
+        //    event on the active request span (OTel feature-flag conventions).
+        //    The conversion `feature_flag.track` event lands on the same span,
+        //    so the two stay independent but correlated through the trace.
+        new SpanEventHook(),
+        // 2. Metrics: evaluation counters broken down by flag key + variant.
+        new MetricsHook(),
       ],
       // Build the per-request evaluation context from the targeting-key header.
       contextFactory: (context): EvaluationContext | undefined => {
@@ -43,7 +41,6 @@ const eventLogger = events.getEventLogger("feature_flag");
     HealthModule,
     ProductsModule,
     OrdersModule,
-    EventsModule,
   ],
 })
 export class AppModule {}

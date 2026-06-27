@@ -10,21 +10,19 @@
         "on": true,
         "off": false
       },
-      "defaultVariant": "on"
-    },
-    "sticky-header": {
-      "description": "Make the header stay at the top of the page while scrolling.",
-      "state": "ENABLED",
-      "flagType": "boolean",
-      "variants": {
-        "on": true,
-        "off": false
-      },
-      "defaultValue": false,
       "targeting": {
-        "if": [{ "==": [{ "var": "size" }, "sm"]}, "on", null ]
+        "fractional": [
+          [
+            "on",
+            1
+          ],
+          [
+            "off",
+            1
+          ]
+        ]
       },
-      "defaultVariant": "on"
+      "defaultVariant": "off"
     },
     "use-distributed-db": {
       "description": "When on, use postgres else sqlite.",
@@ -43,7 +41,7 @@
           ],
           [
             "off",
-            3
+            0
           ]
         ]
       },
@@ -59,6 +57,20 @@
         "off": false
       },
       "defaultVariant": "off"
+    },
+    "sticky-header": {
+      "description": "Make the header stay at the top of the page while scrolling.",
+      "state": "ENABLED",
+      "flagType": "boolean",
+      "variants": {
+        "on": true,
+        "off": false
+      },
+      "defaultValue": false,
+      "targeting": {
+        "if": [{ "==": [{ "var": "size" }, "sm"]}, "on", null ]
+      },
+      "defaultVariant": "on"
     }
   },
   "metadata": {
